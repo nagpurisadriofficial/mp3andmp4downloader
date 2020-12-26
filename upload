@@ -1,0 +1,174 @@
+<?php
+$sort = @$_GET['sort'];
+$page = @$_GET['page'];
+$sort = isset($sort) && in_array($sort,array(0,1))?$sort:1;
+$page = isset($page) && $page!=0?$page:1;
+$per_page = 10; // File Per page Limit
+$upload_path = "siteuploads/userfiles/"; // File upload path
+$filetype = "mp3,mp4,gif,png,jpeg"; // File Tyle Allow
+$max_size = 20970000; // File Size Max 20Mb Allow in bytes!!
+
+$totalfiles=intval((count(@scandir($upload_path)))-2);
+$ignore_files = array('index.php', 'error_log', '.htaccess');
+
+if(!is_dir($upload_path)){mkdir($upload_path, 0755);}
+
+echo '<h1>File Uploader (Under: '.friendly_size($max_size).')</h1>';
+echo '<div><font color="red"><b>Your Songs Are Added Very Soon Need 24 hr.</b></font></div>';
+echo'<form enctype="multipart/form-data" method="post" class="upload tCenter">
+<div class="list">Upload File 1:<br/>
+<input name="userfile[]" type="file" multiple="multiple" class="input" size="60"/></div>
+<div id="more"></div>
+<div class="addmore" style="margin: 3px;"><input type="text" id="max" value="2" size="1"/><input class="button" type="button" value="Add More+" onclick="addmore()"/></div>
+<div class="tCenter" style="margin: 3px;"><input type="submit" value="Send File" class="button"/></div>
+</form>';
+
+upload($_FILES['userfile'],$filetype,$upload_path,$max_size);
+
+function upload($file,$filetype,$upload_path,$max_size){
+for($i = 0; $i < count($file["name"]); $i++) {
+$filetmp=$file["tmp_name"][$i];
+$filename=$file["name"][$i];
+$fileExt=strtolower(explode("/",$file["type"][$i])[1]);
+$filetype=strtolower($filetype);
+if($filetmp){
+if(preg_match("/$fileExt/",$filetype)){
+if($file["size"][$i] < $max_size) {
+if(copy($filetmp,$upload_path.$filename)){
+      $status.='<div style="color:#26c700;"><i class="fa fa-check"></i>   File #'.($i+1).' '.$filename.' Uploaded Successfull</div>';
+}else{$status.='<div style="color:#ff0000;"><i class="fa fa-close"></i>   File #'.($i+1).' '.$filename.' Upload Failed</div>';}
+}else{$status.='<div style="color:#ef9a00;"><i class="fa fa fa-bug"></i>  File #'.($i+1).' '.$filename.' File Size Too Large!</div>';}
+}else{$status.='<div style="color:#ef9a00;"><i class="fa fa-warning"></i> File #'.($i+1).' '.$filename.' Not Allowed "'.$fileExt.'" Format!</div>';}
+if($i>10){break;}
+}
+}
+echo '<div class="tCenter"><b>'.$status.'</b></div>';
+}
+
+date_default_timezone_set("Asia/Kolkata");
+function friendly_size($size,$round=2)
+{
+$sizes=array(' Bytes',' Kb',' Mb',' Gb',' Tb');
+$total=count($sizes)-1;
+for($i=0;$size>1024 && $i<$total;$i++){
+$size/=1024;
+}
+return round($size,$round).$sizes[$i];
+}
+if($sort==1)
+{
+$handle = opendir($upload_path);
+function datecmp($a,$b)
+{
+if($a==$b)
+{
+return 0;
+}
+return ($a<$b)?-1:1;
+}
+$h = array();
+while(false !== ($run = readdir($handle)))
+{
+if($run!='.' && $run!='..' && (is_array($ignore_files) && !in_array($run, $ignore_files)) && !is_dir($run))
+{
+$h[] = array(filemtime($upload_path.'/'.$run),$run);
+}
+}
+closedir($handle);
+usort($h,"datecmp");
+$h = array_reverse($h);
+}
+else {
+$h = scandir($upload_path);
+unset($h[0]);
+unset($h[1]);
+}
+function paging($sort,$input,$page,$show_per_page,$return_type="array",$counter=0,$index=0,$num_pages=0,$limit_number=3,$limit_page=3,$admin=0,$sort)
+{
+$count = count($input);
+$start = ($page-1)*$show_per_page;
+$end = $start+$show_per_page;
+if($return_type=="array")
+{
+
+if($start<0 || $count<=$start)
+{
+
+return false;
+}
+else
+{
+if($count<=$end)
+{
+return array_slice($input,$start);
+}
+else
+{
+return array_slice($input,$start,$end-$start);
+}
+}
+} // end of array type
+else
+{
+$page_offset = ( $page - 1) * $limit_page ;
+$limit_number_start = $page - ceil ( $limit_number / 2);
+$limit_number_end = ceil ( $page + $limit_number / 2) - 1;
+if ( $limit_number_start < 1) $limit_number_start = 1;
+$dif = ($limit_number_end - $limit_number_start);
+if($dif<$limit_number) $limit_number_end = $limit_number_end+($limit_number-($dif+1));
+if($limit_number_end>$num_pages) $limit_number_end = $num_pages;
+$dif = ($limit_number_end - $limit_number_start);
+if( $limit_number_start<1) $limit_number_start = 1;
+$tot_pages = round($counter/$show_per_page);
+for($i=$limit_number_start;$i<=$limit_number_end;$i++)
+{
+if($page!=$i)
+$output = '<a href="?page='.$i.'&sort='.$sort.'">'.$i.'</a>';
+else $output = '<span class="cur">'.$i.'</span>';
+echo $output;
+}
+}
+}
+$count = count($h);
+$last_page = ceil($count/$per_page);
+$h = paging($sort,$h,$page,$per_page);
+date_default_timezone_set("Asia/Kolkata");
+echo '<div class="catblock"><h1 class="headtitle">Uploaded Files (<b style="color:#fff">'.$totalfiles.'</b>)</h1><div class="catlistblock"><div id="player"></div>';
+echo $sort==1?'<div class="dtype" style="text-align:center;"><a href="?page=1&sort=0"><b>Sort by A-Z</b></a></div>':'<div class="dtype" style="text-align:center;"><a href="?page=1&sort=1"><b>Sort by Newest</b></a></div>';
+if($count>0)
+{
+foreach($h as $file)
+{
+$r_file = $sort==1?$file[1]:$file;
+if(preg_match("/\.mp3/i",$r_file)){$filethumb='/images/MP3.png';$play='<a href="javascript:void(0)" onclick="play(\'/'.$upload_path.$r_file.'\',this)">Play</a>';}
+elseif(preg_match("/\.(gif|jpeg|jpg|png|bmp)/i",$r_file)){$filethumb='/'.$upload_path.$r_file;}
+else{$filethumb='/images/albumart.jpg';}
+echo '<div class="catlist"><table><tr class="fl">
+<td class="tblimg"><img src="'.$filethumb.'" width="50px" style="max-height:60px"/></td>
+<td align="left"><a href="/'.$upload_path.$r_file.'"><span style="color:;">'.$r_file.'</span></a>
+<div><span class="filetext">File Size:</span>'.friendly_size(filesize($upload_path.$r_file)).'</div>
+<div style="display:unset;" class="minitext"><span class="filetext">'.date("h:i:s d-M-Y", filemtime($upload_path."/".$r_file)).'</span> '.$play.'</div></td></tr></table></div>';
+}
+echo '<div class="pgn">';
+echo paging($sort,$upload_path,$page,$per_page,"paging",$count,$upload_path,$last_page,6,1);
+echo '</div>';
+}
+else{echo '<div class="rmenu">Files Not Found</div>';}
+echo'</div></div><h2 class="bmenu" style="text-align:center;">Total <b class="text">('.$totalfiles.')</b> Files Uploaded</h2>';
+
+?>
+<script type="text/javascript"> function play(file,link){
+player=document.getElementById("player");
+if(player.innerHTML==''){player.innerHTML=('<audio class="my_audio" controls preload="none" autoplay><source src="'+file+'" type="audio/mpeg"></audio>');link.innerHTML='Stop';}
+else{player.innerHTML=''; link.innerHTML='Play';}
+}</script>
+<script>
+function addmore(){add="";
+l=+document.getElementById('max').value+1;
+if(!l){l=0;}
+for( i=2 ; i < l ; i++ ){
+add+='<div class="list">Upload File '+i+':<br/><input type="file" name="userfile[]" /></div>';if(i>9) {break;}}
+document.getElementById('more').innerHTML=add;
+document.getElementById('max').value=i;
+}
+</script>
